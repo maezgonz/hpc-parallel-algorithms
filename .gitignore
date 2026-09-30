@@ -1,0 +1,8 @@
+bin/
+*.o
+*.out
+*.mod
+*.exe
+logs/
+*.csv
+!results/*.csv

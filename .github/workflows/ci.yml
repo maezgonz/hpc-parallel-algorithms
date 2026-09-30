@@ -1,0 +1,16 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make all CFLAGS="-O2 -fopenmp -Wall -Wextra -std=c17"
+      - name: Smoke test
+        run: ./bin/monte_carlo_pi 1000000
