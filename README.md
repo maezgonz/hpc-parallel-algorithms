@@ -79,12 +79,32 @@ Strong-scaling study of the Monte Carlo kernel on FinisTerrae-3 (1× AMD EPYC no
 
 > Figures are generated from `benchmarks/*.csv`; populated as runs complete.
 
+### Benchmark harness
+
+Scaling results are analyzed automatically: feed a CSV of `(threads, wall_time)` pairs and the harness derives speedup, parallel efficiency and a markdown table ready for this README — rendered in dark mode.
+
+```bash
+python benchmarks/plot_scaling.py --csv benchmarks/sample_scaling.csv \
+  --title "Strong scaling - Monte Carlo pi" --output benchmarks/scaling.png
+```
+
+**Sample output** (illustrative data until FinisTerrae-3 runs land — see `benchmarks/sample_scaling.csv`):
+
+| Threads | Wall time (s) | Speedup | Efficiency |
+|---:|---:|---:|---:|
+| 1 | 40.500 | 1.00x | 100% |
+| 8 | 5.500 | 7.36x | 92% |
+| 32 | 1.900 | 21.32x | 67% |
+| 64 | 1.600 | 25.31x | 40% |
+
+![Sample strong scaling](benchmarks/sample_scaling.png)
+
 ## Roadmap
 
+- [x] Strong-scaling harness with automated dark-mode plotting
 - [ ] 2D stencil (Jacobi) solver with OpenMP + MPI hybrid decomposition
 - [ ] MPI point-to-point and collective communication benchmarks
-- [ ] Strong/weak scaling harness with automated plotting
-- [ ] NUMA-aware memory placement study
+- [ ] Weak-scaling study and NUMA-aware memory placement
 
 ## License
 
