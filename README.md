@@ -27,7 +27,7 @@ A curated collection of parallel algorithms in C, developed and benchmarked as p
 |---|---|
 | Language | C17 |
 | Shared memory | OpenMP (reductions, static scheduling, per-thread RNG) |
-| Distributed memory | MPI (roadmap) |
+| Distributed memory | MPI (hybrid row decomposition, halo exchange via Sendrecv) |
 | Scheduler | Slurm (CESGA FinisTerrae-3) |
 | Build | GNU Make, GCC (`-O3 -march=native`) |
 | CI | GitHub Actions (build + smoke test) |
@@ -37,10 +37,15 @@ A curated collection of parallel algorithms in C, developed and benchmarked as p
 ```text
 hpc-parallel-algorithms/
 ├── src/
-│   └── monte_carlo_pi.c      # OpenMP Monte Carlo pi, per-thread erand48 seeding
+│   ├── monte_carlo_pi.c      # OpenMP Monte Carlo pi, per-thread PCG RNG seeding
+│   └── jacobi_2d.c           # hybrid MPI+OpenMP 2D Laplace solver, halo exchange
 ├── slurm/
-│   └── monte_carlo_pi.slurm  # SBATCH wrapper: 1 node, 64 CPUs, 10 min
-├── benchmarks/               # scaling results (CSV + plots)
+│   ├── monte_carlo_pi.slurm  # SBATCH: 1 node, 64 CPUs, 10 min
+│   └── jacobi_2d.slurm       # SBATCH: 2 nodes, 2x2 ranks, 32 CPUs each
+├── benchmarks/
+│   ├── plot_scaling.py       # CSV -> speedup/efficiency plots (dark mode)
+│   ├── plot_field.py         # CSV field -> heatmap (dark mode)
+│   └── sample_*              # illustrative data until FinisTerrae-3 runs land
 ├── Makefile
 └── .github/workflows/ci.yml
 ```
@@ -60,9 +65,19 @@ make all
 ```bash
 # adapt partition and CPUs to the node topology (check with `sinfo`, `lscpu`)
 sbatch slurm/monte_carlo_pi.slurm
+sbatch slurm/jacobi_2d.slurm
 squeue -u $USER
 sacct -j <jobid> --format=JobID,Elapsed,NTasks,State
 ```
+
+### Hybrid MPI + OpenMP (local)
+
+```bash
+mpirun -np 2 ./bin/jacobi_2d 256 10000 1e-4 field.csv
+# n=256 ranks=2 threads_per_rank=8 iters=2763 residual=9.99e-05 converged=yes wall_s=0.214
+```
+
+The 2D Laplace solver decomposes the global grid by rows across MPI ranks; each rank sweeps its block with OpenMP and exchanges halo rows via `MPI_Sendrecv`. Convergence is tracked with `MPI_Allreduce` (max).
 
 ## Results
 
@@ -99,10 +114,17 @@ python benchmarks/plot_scaling.py --csv benchmarks/sample_scaling.csv \
 
 ![Sample strong scaling](benchmarks/sample_scaling.png)
 
+### Laplace field (Jacobi, 64×64 sample)
+
+![Laplace field — Jacobi](benchmarks/sample_field.png)
+
+> Sample field generated until FinisTerrae-3 runs land; regenerate with:
+> `python benchmarks/plot_field.py --csv benchmarks/sample_field.csv`
+
 ## Roadmap
 
 - [x] Strong-scaling harness with automated dark-mode plotting
-- [ ] 2D stencil (Jacobi) solver with OpenMP + MPI hybrid decomposition
+- [x] 2D stencil (Jacobi) solver with OpenMP + MPI hybrid decomposition
 - [ ] MPI point-to-point and collective communication benchmarks
 - [ ] Weak-scaling study and NUMA-aware memory placement
 
