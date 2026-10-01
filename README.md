@@ -46,6 +46,8 @@ hpc-parallel-algorithms/
 │   ├── plot_scaling.py       # CSV -> speedup/efficiency plots (dark mode)
 │   ├── plot_field.py         # CSV field -> heatmap (dark mode)
 │   └── sample_*              # illustrative data until FinisTerrae-3 runs land
+├── labs/
+│   └── mpi/                  # 12 hands-on MPI exercises (MSc coursework, FT3)
 ├── Makefile
 └── .github/workflows/ci.yml
 ```
@@ -78,6 +80,14 @@ mpirun -np 2 ./bin/jacobi_2d 256 10000 1e-4 field.csv
 ```
 
 The 2D Laplace solver decomposes the global grid by rows across MPI ranks; each rank sweeps its block with OpenMP and exchanges halo rows via `MPI_Sendrecv`. Convergence is tracked with `MPI_Allreduce` (max).
+
+### MPI labs (MSc coursework)
+
+Twelve hands-on exercises — point-to-point, collectives (`Bcast`, `Scatter`, `Reduce`, `Scan`, `Reduce_scatter`) and domain-decomposed integration — run on FinisTerrae-3 with the real job configuration in `labs/mpi/job_ft3.sh` (`module load intel impi`, 64 cores/node):
+
+```bash
+cd labs/mpi && make all
+mpirun -np 4 ./example9_reduce
 
 ## Results
 
