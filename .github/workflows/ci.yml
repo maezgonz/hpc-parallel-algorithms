@@ -18,3 +18,7 @@ jobs:
         run: ./bin/monte_carlo_pi 1000000
       - name: Smoke test hybrid MPI kernel
         run: mpirun --allow-run-as-root -np 2 ./bin/jacobi_2d 128 500 1e-4
+      - name: Smoke test GBM engine
+        run: ./bin/gbm_engine 100 0.08 0.25 30 10000
+      - name: Smoke test MPI ping-pong
+        run: mpirun --allow-run-as-root -np 2 ./bin/mpi_pingpong
