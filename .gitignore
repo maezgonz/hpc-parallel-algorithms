@@ -5,4 +5,5 @@ bin/
 *.exe
 logs/
 *.csv
+!benchmarks/*.csv
 !results/*.csv
