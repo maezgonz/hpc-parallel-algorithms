@@ -10,7 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install OpenMPI
+        run: sudo apt-get update && sudo apt-get install -y openmpi-bin libopenmpi-dev
       - name: Build
         run: make all CFLAGS="-O2 -fopenmp -Wall -Wextra -std=c17"
-      - name: Smoke test
+      - name: Smoke test OpenMP kernel
         run: ./bin/monte_carlo_pi 1000000
+      - name: Smoke test hybrid MPI kernel
+        run: mpirun --allow-run-as-root -np 2 ./bin/jacobi_2d 128 500 1e-4
