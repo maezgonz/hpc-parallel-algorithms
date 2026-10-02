@@ -38,10 +38,13 @@ A curated collection of parallel algorithms in C, developed and benchmarked as p
 hpc-parallel-algorithms/
 ├── src/
 │   ├── monte_carlo_pi.c      # OpenMP Monte Carlo pi, per-thread PCG RNG seeding
-│   └── jacobi_2d.c           # hybrid MPI+OpenMP 2D Laplace solver, halo exchange
+│   ├── jacobi_2d.c           # hybrid MPI+OpenMP 2D Laplace solver, halo exchange
+│   ├── gbm_engine.c          # OpenMP GBM engine: antithetic variates, Welford, bands CSV
+│   └── mpi_pingpong.c        # point-to-point latency/bandwidth benchmark
 ├── slurm/
 │   ├── monte_carlo_pi.slurm  # SBATCH: 1 node, 64 CPUs, 10 min
-│   └── jacobi_2d.slurm       # SBATCH: 2 nodes, 2x2 ranks, 32 CPUs each
+│   ├── jacobi_2d.slurm       # SBATCH: 2 nodes, 2x2 ranks, 32 CPUs each
+│   └── gbm_engine.slurm      # SBATCH: 1 node, 64 CPUs, 15 min, 10^9 paths
 ├── benchmarks/
 │   ├── plot_scaling.py       # CSV -> speedup/efficiency plots (dark mode)
 │   ├── plot_field.py         # CSV field -> heatmap (dark mode)
@@ -80,6 +83,30 @@ mpirun -np 2 ./bin/jacobi_2d 256 10000 1e-4 field.csv
 ```
 
 The 2D Laplace solver decomposes the global grid by rows across MPI ranks; each rank sweeps its block with OpenMP and exchanges halo rows via `MPI_Sendrecv`. Convergence is tracked with `MPI_Allreduce` (max).
+
+### GBM engine (local)
+
+```bash
+./bin/gbm_engine 100 0.08 0.25 252 100000000 benchmarks/gbm_bands.csv
+# s0=100.00 mu=0.0800 sigma=0.2500 horizon=252 paths=100000000 threads=8
+# exact_terminal_mean=... exact_terminal_std=...
+# elapsed_s=... throughput_paths_per_s=...
+```
+
+Streams trajectories with **antithetic variates** (variance reduction), accumulates exact terminal statistics via Welford (merged per thread), and keeps a stride sample of full paths for per-day percentile bands. The CSV's `# key=value` metadata header is consumed by the Python bridge in [quant-trading-models](https://github.com/maezgonz/quant-trading-models) (`src/hpc_bridge.py`), which plots the bands in dark mode and cross-validates the engine against the NumPy kernel.
+
+### MPI ping-pong benchmark (local)
+
+```bash
+mpirun -np 2 ./bin/mpi_pingpong
+#      bytes      latency_us      bandwidth_GBps
+#          1            0.85              0.001
+#          2            0.88              0.002
+#          ...
+#    8388608         1850.00             22.670
+```
+
+Canonical ping-pong over increasing message sizes (1 B to 8 MiB): half-RTT latency and one-way bandwidth, characterizing the interconnect.
 
 ### MPI labs (MSc coursework)
 
@@ -135,8 +162,11 @@ python benchmarks/plot_scaling.py --csv benchmarks/sample_scaling.csv \
 
 - [x] Strong-scaling harness with automated dark-mode plotting
 - [x] 2D stencil (Jacobi) solver with OpenMP + MPI hybrid decomposition
-- [ ] MPI point-to-point and collective communication benchmarks
+- [x] GBM engine (OpenMP, antithetic variates) feeding the quant bridge
+- [x] MPI point-to-point benchmark (ping-pong latency/bandwidth)
+- [ ] Collective communication benchmarks (Bcast/Scatter/Reduce at scale)
 - [ ] Weak-scaling study and NUMA-aware memory placement
+- [ ] Real FinisTerrae-3 runs populating the benchmark tables
 
 ## License
 
