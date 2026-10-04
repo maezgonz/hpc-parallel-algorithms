@@ -68,9 +68,12 @@ make all
 ### CESGA FinisTerrae-3 (Slurm)
 
 ```bash
-# adapt partition and CPUs to the node topology (check with `sinfo`, `lscpu`)
+# scripts load the Intel toolchain (module load intel impi); default partition is short*
+module load intel impi
+make all CC=icc CFLAGS="-O3 -fopenmp -std=c17"
 sbatch slurm/monte_carlo_pi.slurm
 sbatch slurm/jacobi_2d.slurm
+sbatch slurm/gbm_engine.slurm
 squeue -u $USER
 sacct -j <jobid> --format=JobID,Elapsed,NTasks,State
 ```
@@ -118,18 +121,39 @@ mpirun -np 4 ./example9_reduce
 
 ## Results
 
-Strong-scaling study of the Monte Carlo kernel on FinisTerrae-3 (1× AMD EPYC node, 10⁹ samples):
+All results below are **real runs on CESGA FinisTerrae-3** (Intel icc 2021.3.0, Intel MPI 2021.3, InfiniBand fabric).
 
-| Threads | Wall time (s) | Speedup | Efficiency |
-|---:|---:|---:|---:|
-| 1 | TBD | 1.00× | 100% |
-| 8 | TBD | TBD | TBD |
-| 32 | TBD | TBD | TBD |
-| 64 | TBD | TBD | TBD |
+### Strong scaling — Monte Carlo pi (10⁹ samples, 1× 64-core node)
+
+| Threads | Wall time (s) | Speedup | Efficiency | abs error |
+|---:|---:|---:|---:|---:|
+| 1 | 5.863 | 1.00× | 100% | 3.49e-05 |
+| 8 | 0.735 | 7.98× | 99.7% | 6.35e-05 |
+| 32 | 0.427 | 13.73× | 42.9% | 5.90e-05 |
+| 64 | 0.333 | 17.60× | 27.5% | 7.72e-05 |
+
+Near-perfect scaling to 8 threads; beyond that the kernel becomes memory-bandwidth bound. The varying absolute error per row reflects the distinct per-thread RNG streams.
 
 ![Strong scaling — Monte Carlo pi](benchmarks/strong_scaling.png)
 
-> Figures are generated from `benchmarks/*.csv`; populated as runs complete.
+### MPI ping-pong — inter-node latency and bandwidth (InfiniBand, 2 nodes)
+
+| Bytes | RTT (µs) | Bandwidth (GB/s) |
+|---:|---:|---:|
+| 1 | 2.82 | 0.001 |
+| 64 | 2.99 | 0.043 |
+| 1024 | 4.72 | 0.434 |
+| 32768 | 16.00 | 4.097 |
+| 1048576 | 180.55 | 11.615 |
+| 8388608 | 1370.16 | 12.245 |
+
+Latency floor of **~2.8 µs** and a bandwidth plateau of **~12.2 GB/s** — the classic interconnect fingerprint.
+
+### Hybrid MPI + OpenMP — Laplace solver (1024×1024, 2 nodes × 2 ranks × 32 threads)
+
+`n=1024 ranks=4 threads_per_rank=32 iters=5001 wall_s=0.181` — run across two physical nodes (c202-15, c202-16) with halo exchange over InfiniBand; the sweep is memory-bound at this grid size, so the efficiency report is dominated by the short wall time.
+
+![Laplace field — hybrid Jacobi on FT3](benchmarks/jacobi_field_ft3.png)
 
 ### Benchmark harness
 
@@ -140,7 +164,7 @@ python benchmarks/plot_scaling.py --csv benchmarks/sample_scaling.csv \
   --title "Strong scaling - Monte Carlo pi" --output benchmarks/scaling.png
 ```
 
-**Sample output** (illustrative data until FinisTerrae-3 runs land — see `benchmarks/sample_scaling.csv`):
+**Sample output** (illustrative data — see `benchmarks/sample_scaling.csv`):
 
 | Threads | Wall time (s) | Speedup | Efficiency |
 |---:|---:|---:|---:|
@@ -149,14 +173,14 @@ python benchmarks/plot_scaling.py --csv benchmarks/sample_scaling.csv \
 | 32 | 1.900 | 21.32x | 67% |
 | 64 | 1.600 | 25.31x | 40% |
 
-![Sample strong scaling](benchmarks/sample_scaling.png)
+### Field rendering
 
-### Laplace field (Jacobi, 64×64 sample)
+Fields exported by the solvers render as dark-mode heatmaps:
 
-![Laplace field — Jacobi](benchmarks/sample_field.png)
-
-> Sample field generated until FinisTerrae-3 runs land; regenerate with:
-> `python benchmarks/plot_field.py --csv benchmarks/sample_field.csv`
+```bash
+python benchmarks/plot_field.py --csv benchmarks/jacobi_field_ft3.csv \
+  --title "Laplace field - hybrid Jacobi" --output benchmarks/field.png
+```
 
 ## Roadmap
 
@@ -164,9 +188,9 @@ python benchmarks/plot_scaling.py --csv benchmarks/sample_scaling.csv \
 - [x] 2D stencil (Jacobi) solver with OpenMP + MPI hybrid decomposition
 - [x] GBM engine (OpenMP, antithetic variates) feeding the quant bridge
 - [x] MPI point-to-point benchmark (ping-pong latency/bandwidth)
+- [x] Real FinisTerrae-3 runs populating the benchmark tables
 - [ ] Collective communication benchmarks (Bcast/Scatter/Reduce at scale)
 - [ ] Weak-scaling study and NUMA-aware memory placement
-- [ ] Real FinisTerrae-3 runs populating the benchmark tables
 
 ## License
 
