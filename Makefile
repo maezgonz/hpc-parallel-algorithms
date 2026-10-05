@@ -5,7 +5,7 @@ LDFLAGS := -fopenmp -lm
 
 .PHONY: all run-mcpi run-jacobi run-gbm run-pingpong clean
 
-all: bin/monte_carlo_pi bin/jacobi_2d bin/gbm_engine bin/mpi_pingpong
+all: bin/monte_carlo_pi bin/jacobi_2d bin/gbm_engine bin/mpi_pingpong bin/mpi_collectives
 
 bin/monte_carlo_pi: src/monte_carlo_pi.c
 	@mkdir -p $(dir $@)
@@ -20,6 +20,10 @@ bin/gbm_engine: src/gbm_engine.c
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 bin/mpi_pingpong: src/mpi_pingpong.c
+	@mkdir -p $(dir $@)
+	$(MPICC) $(CFLAGS) -o $@ $< -lm
+
+bin/mpi_collectives: src/mpi_collectives.c
 	@mkdir -p $(dir $@)
 	$(MPICC) $(CFLAGS) -o $@ $< -lm
 

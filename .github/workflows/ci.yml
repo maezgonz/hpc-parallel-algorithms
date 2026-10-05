@@ -22,3 +22,5 @@ jobs:
         run: ./bin/gbm_engine 100 0.08 0.25 30 10000
       - name: Smoke test MPI ping-pong
         run: mpirun --allow-run-as-root -np 2 ./bin/mpi_pingpong
+      - name: Smoke test MPI collectives
+        run: mpirun --allow-run-as-root -np 2 ./bin/mpi_collectives
