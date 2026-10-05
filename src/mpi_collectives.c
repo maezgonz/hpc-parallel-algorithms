@@ -19,7 +19,8 @@
 
 /**
  * Synchronize all ranks and return the slowest rank's elapsed time for one
- * timed block, measured around the caller's collective loop.
+ * timed block, measured around the caller's collective loop. Must be
+ * invoked by every rank: it contains an MPI_Allreduce.
  *
  * @param t0 Start timestamp captured with MPI_Wtime before the loop.
  * @return Maximum elapsed time across ranks.
@@ -58,6 +59,7 @@ int main(int argc, char **argv) {
     for (int c = 0; c < n_counts; ++c) {
         const int count = counts[c];
         const int chunk = count / size > 0 ? count / size : 1;
+        double elapsed = 0.0;
 
         if (rank == 0) {
             printf("=== count=%d doubles (%d B/rank, %d ranks) ===\n",
@@ -72,9 +74,9 @@ int main(int argc, char **argv) {
         for (int i = 0; i < REPEATS; ++i) {
             MPI_Bcast(buffer, count, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         }
+        elapsed = collect_max_elapsed(t0);
         if (rank == 0) {
-            printf("%-10s avg_us=%.2f\n", "Bcast",
-                   collect_max_elapsed(t0) / REPEATS * 1e6);
+            printf("%-10s avg_us=%.2f\n", "Bcast", elapsed / REPEATS * 1e6);
         }
 
         for (int i = 0; i < WARMUP; ++i) {
@@ -85,9 +87,9 @@ int main(int argc, char **argv) {
         for (int i = 0; i < REPEATS; ++i) {
             MPI_Scatter(buffer, chunk, MPI_DOUBLE, scratch, chunk, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         }
+        elapsed = collect_max_elapsed(t0);
         if (rank == 0) {
-            printf("%-10s avg_us=%.2f\n", "Scatter",
-                   collect_max_elapsed(t0) / REPEATS * 1e6);
+            printf("%-10s avg_us=%.2f\n", "Scatter", elapsed / REPEATS * 1e6);
         }
 
         for (int i = 0; i < WARMUP; ++i) {
@@ -98,9 +100,9 @@ int main(int argc, char **argv) {
         for (int i = 0; i < REPEATS; ++i) {
             MPI_Gather(buffer, chunk, MPI_DOUBLE, scratch, chunk, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         }
+        elapsed = collect_max_elapsed(t0);
         if (rank == 0) {
-            printf("%-10s avg_us=%.2f\n", "Gather",
-                   collect_max_elapsed(t0) / REPEATS * 1e6);
+            printf("%-10s avg_us=%.2f\n", "Gather", elapsed / REPEATS * 1e6);
         }
 
         for (int i = 0; i < WARMUP; ++i) {
@@ -111,9 +113,9 @@ int main(int argc, char **argv) {
         for (int i = 0; i < REPEATS; ++i) {
             MPI_Reduce(buffer, scratch, count, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
         }
+        elapsed = collect_max_elapsed(t0);
         if (rank == 0) {
-            printf("%-10s avg_us=%.2f\n", "Reduce",
-                   collect_max_elapsed(t0) / REPEATS * 1e6);
+            printf("%-10s avg_us=%.2f\n", "Reduce", elapsed / REPEATS * 1e6);
         }
 
         for (int i = 0; i < WARMUP; ++i) {
@@ -124,9 +126,9 @@ int main(int argc, char **argv) {
         for (int i = 0; i < REPEATS; ++i) {
             MPI_Allreduce(buffer, scratch, count, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         }
+        elapsed = collect_max_elapsed(t0);
         if (rank == 0) {
-            printf("%-10s avg_us=%.2f\n", "Allreduce",
-                   collect_max_elapsed(t0) / REPEATS * 1e6);
+            printf("%-10s avg_us=%.2f\n", "Allreduce", elapsed / REPEATS * 1e6);
         }
     }
 
