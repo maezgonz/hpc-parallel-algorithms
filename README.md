@@ -40,7 +40,8 @@ hpc-parallel-algorithms/
 │   ├── monte_carlo_pi.c      # OpenMP Monte Carlo pi, per-thread PCG RNG seeding
 │   ├── jacobi_2d.c           # hybrid MPI+OpenMP 2D Laplace solver, halo exchange
 │   ├── gbm_engine.c          # OpenMP GBM engine: antithetic variates, Welford, bands CSV
-│   └── mpi_pingpong.c        # point-to-point latency/bandwidth benchmark
+│   ├── mpi_pingpong.c        # point-to-point latency/bandwidth benchmark
+│   └── mpi_collectives.c     # collective benchmark: Bcast/Scatter/Gather/Reduce/Allreduce
 ├── slurm/
 │   ├── monte_carlo_pi.slurm  # SBATCH: 1 node, 64 CPUs, 10 min
 │   ├── jacobi_2d.slurm       # SBATCH: 2 nodes, 2x2 ranks, 32 CPUs each
@@ -149,6 +150,21 @@ Near-perfect scaling to 8 threads; beyond that the kernel becomes memory-bandwid
 
 Latency floor of **~2.8 µs** and a bandwidth plateau of **~12.2 GB/s** — the classic interconnect fingerprint.
 
+### Collective communication (4 ranks × 8 threads, 2 nodes)
+
+Average duration per call across message sizes (InfiniBand, 2 nodes):
+
+| Bytes/rank | Bcast | Scatter | Gather | Reduce | Allreduce |
+|---:|---:|---:|---:|---:|---:|
+| 8 | 0.99 µs | 1.29 µs | 1.11 µs | 0.89 µs | 2.10 µs |
+| 32 | 1.25 µs | 1.37 µs | 1.11 µs | 1.63 µs | 4.79 µs |
+| 512 | 2.79 µs | 4.22 µs | 3.35 µs | 3.56 µs | 6.32 µs |
+| 8192 | 15.72 µs | 14.23 µs | 6.19 µs | 13.08 µs | 17.71 µs |
+| 131072 | 233.06 µs | 37.26 µs | 29.82 µs | 139.51 µs | 133.43 µs |
+| 262144 | 221.29 µs | 70.89 µs | 64.17 µs | 262.14 µs | 260.69 µs |
+
+Scatter/Gather stay cheapest at scale (tree algorithms on the fabric); Reduce/Allreduce pay the data-size cost of the reduction tree.
+
 ### Hybrid MPI + OpenMP — Laplace solver (1024×1024, 2 nodes × 2 ranks × 32 threads)
 
 `n=1024 ranks=4 threads_per_rank=32 iters=5001 wall_s=0.181` — run across two physical nodes (c202-15, c202-16) with halo exchange over InfiniBand; the sweep is memory-bound at this grid size, so the efficiency report is dominated by the short wall time.
@@ -189,7 +205,7 @@ python benchmarks/plot_field.py --csv benchmarks/jacobi_field_ft3.csv \
 - [x] GBM engine (OpenMP, antithetic variates) feeding the quant bridge
 - [x] MPI point-to-point benchmark (ping-pong latency/bandwidth)
 - [x] Real FinisTerrae-3 runs populating the benchmark tables
-- [ ] Collective communication benchmarks (Bcast/Scatter/Reduce at scale)
+- [x] Collective communication benchmarks (Bcast/Scatter/Reduce at scale)
 - [ ] Weak-scaling study and NUMA-aware memory placement
 
 ## License
