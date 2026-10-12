@@ -146,7 +146,7 @@ All results below are **real runs on CESGA FinisTerrae-3** (Intel icc 2021.3.0, 
 
 Near-perfect scaling to 8 threads; beyond that the kernel becomes memory-bandwidth bound. The varying absolute error per row reflects the distinct per-thread RNG streams.
 
-![Strong scaling — Monte Carlo pi](benchmarks/strong_scaling.png)
+![Strong scaling — Monte Carlo pi](benchmarks/sample_scaling.png)
 
 ### MPI ping-pong — inter-node latency and bandwidth (InfiniBand, 2 nodes)
 
