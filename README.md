@@ -135,18 +135,21 @@ mpirun -np 4 ./example9_reduce
 
 All results below are **real runs on CESGA FinisTerrae-3** (Intel icc 2021.3.0, Intel MPI 2021.3, InfiniBand fabric).
 
-### Strong scaling — Monte Carlo pi (10⁹ samples, 1× 64-core node)
+### Strong scaling — Monte Carlo pi (10⁹ samples, 1× 64-core node, FinisTerrae-3)
 
-| Threads | Wall time (s) | Speedup | Efficiency | abs error |
-|---:|---:|---:|---:|---:|
-| 1 | 5.863 | 1.00× | 100% | 3.49e-05 |
-| 8 | 0.735 | 7.98× | 99.7% | 6.35e-05 |
-| 32 | 0.427 | 13.73× | 42.9% | 5.90e-05 |
-| 64 | 0.333 | 17.60× | 27.5% | 7.72e-05 |
+| Threads | Wall time (s) | Speedup | Efficiency |
+|---:|---:|---:|---:|
+| 1 | 5.862 | 1.00× | 100% |
+| 2 | 2.933 | 2.00× | 100% |
+| 4 | 1.468 | 3.99× | 100% |
+| 8 | 0.735 | 7.98× | 100% |
+| 16 | 0.369 | 15.89× | 99% |
+| 32 | 0.232 | 25.23× | 79% |
+| 64 | 0.369 | 15.89× | 25% |
 
-Near-perfect scaling to 8 threads; beyond that the kernel becomes memory-bandwidth bound. The varying absolute error per row reflects the distinct per-thread RNG streams.
+Measured on FT3 (job 10691477, `slurm/scaling_sweep.sh`). Perfectly linear to 16 threads, 79% efficiency at 32 (25.2×), then the curve **inverts at 64** — the memory-bandwidth wall of the 2-socket node; the kernel is so light that at <0.4 s the run is dominated by bandwidth, not compute.
 
-![Strong scaling — Monte Carlo pi](benchmarks/sample_scaling.png)
+![Strong scaling — Monte Carlo pi](benchmarks/strong_scaling_ft3.png)
 
 ### MPI ping-pong — inter-node latency and bandwidth (InfiniBand, 2 nodes)
 
@@ -178,10 +181,10 @@ Scatter/Gather stay cheapest at scale (tree algorithms on the fabric); Reduce/Al
 
 ### Performance analysis — what limits scaling
 
-**Monte Carlo pi (10⁹ samples, 64 cores):** 17.6× speedup = 27.5% parallel efficiency. The kernel is **compute-bound, far from the memory roofline** — its working set is a handful of doubles, so bandwidth is irrelevant. The limiter is per-core instruction throughput:
+**Monte Carlo pi (10⁹ samples, FT3 sweep job 10691477):** perfectly linear to 16 threads (99–100% efficiency), 25.2× at 32 (79%), then the curve **inverts at 64** (15.9× — slower than 32). The kernel is **compute-bound, far from the memory roofline** — its working set is a handful of doubles, so bandwidth is irrelevant. The limiters:
 
 - 47M samples/s/core, each sample = 2 LCG steps (multiply-add) + 2 multiplies + compare. The LCG chain is **serially dependent** per sample, limiting instruction-level parallelism.
-- Beyond 8 threads (99.7% efficiency), the drop to 32/64 threads reflects 2-socket NUMA effects and core clock/power scaling rather than any memory or synchronization bottleneck (`hits` uses an OpenMP reduction — no false sharing).
+- Up to 32 threads the run stays on one socket; at 64 it crosses the second socket — NUMA, reduced clocks under full-core load, and the fixed cost of the OpenMP reduction dominate a run that at that point lasts barely 0.2 s. The absolute numbers are so small (0.23 s) that launch and teardown overhead is visible in the measurement — an honest sign of where strong scaling stops paying off.
 
 **GBM engine (10⁹ paths × 252 steps, antithetic, 64 cores):** 2.5×10¹¹ step-updates in 376 s ≈ **10.5M step-updates/s/core** — 4.5× slower per step than the pi kernel. Each step draws a standard normal via Box-Muller (log + cos **transcendentals**) and takes one `exp()` — transcendental throughput, not memory or RNG state management, is the bottleneck. The LCG state is thread-private (no contention).
 
