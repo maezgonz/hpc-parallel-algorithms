@@ -151,6 +151,21 @@ Measured on FT3 (job 10691477, `slurm/scaling_sweep.sh`). Perfectly linear to 16
 
 ![Strong scaling — Monte Carlo pi](benchmarks/strong_scaling_ft3.png)
 
+### Weak scaling — Monte Carlo pi (25M samples/thread, FinisTerrae-3)
+
+| Threads | Total samples | Wall time (s) | Weak efficiency |
+|---:|---:|---:|---:|
+| 1 | 25M | 0.150 | 100% |
+| 2 | 50M | 0.149 | 101% |
+| 4 | 100M | 0.148 | 101% |
+| 8 | 200M | 0.148 | 101% |
+| 16 | 400M | 0.149 | 101% |
+| 32 | 800M | 0.228 | 66% |
+| 64 | 1.6G | 0.396 | 38% |
+
+Measured on FT3 (job 10717900, `slurm/weak_sweep.sh`). Runtime is flat while the problem stays on one socket (up to 16 threads); crossing into the second socket at 32/64 threads degrades efficiency — same hardware boundary visible in the strong-scaling curve.
+
+![Weak scaling — Monte Carlo pi](benchmarks/weak_scaling_ft3.png)
 ### MPI ping-pong — inter-node latency and bandwidth (InfiniBand, 2 nodes)
 
 | Bytes | RTT (µs) | Bandwidth (GB/s) |
@@ -231,7 +246,7 @@ python benchmarks/plot_field.py --csv benchmarks/jacobi_field_ft3.csv \
 - [x] MPI point-to-point benchmark (ping-pong latency/bandwidth)
 - [x] Real FinisTerrae-3 runs populating the benchmark tables
 - [x] Collective communication benchmarks (Bcast/Scatter/Reduce at scale)
-- [ ] Weak-scaling study and NUMA-aware memory placement
+- [x] Weak-scaling study (FT3, job 10717900)
 
 ## License
 
