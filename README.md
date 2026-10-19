@@ -4,6 +4,9 @@
 ![Language](https://img.shields.io/badge/C17-OpenMP%20%7C%20MPI-4A90D9)
 ![CI](https://github.com/maezgonz/hpc-parallel-algorithms/actions/workflows/ci.yml/badge.svg)
 
+
+> **TL;DR (for non-technical visitors):** C code that runs on 64-core supercomputers. Every benchmark in this README was measured on FinisTerrae-3, the Galician national supercomputer.
+
 ## Objective
 
 A curated collection of parallel algorithms in C, developed and benchmarked as part of an MSc in High-Performance Computing. Workloads run on **CESGA FinisTerrae-3** (Galician Supercomputing Center) through Slurm. The repository demonstrates production-grade shared-memory (OpenMP) and distributed-memory (MPI) patterns with a focus on **low latency, cache-friendly access and measurable speedups**.
@@ -149,7 +152,7 @@ All results below are **real runs on CESGA FinisTerrae-3** (Intel icc 2021.3.0, 
 
 Measured on FT3 (job 10691477, `slurm/scaling_sweep.sh`). Perfectly linear to 16 threads, 79% efficiency at 32 (25.2×), then the curve **inverts at 64** — the memory-bandwidth wall of the 2-socket node; the kernel is so light that at <0.4 s the run is dominated by bandwidth, not compute.
 
-![Strong scaling — Monte Carlo pi](benchmarks/strong_scaling_ft3.png)
+
 
 ### Weak scaling — Monte Carlo pi (25M samples/thread, FinisTerrae-3)
 
