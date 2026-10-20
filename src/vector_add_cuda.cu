@@ -91,6 +91,7 @@ static double add_gpu(const float *a, const float *b, float *r,
 
     timestamp(&t0);
     add_kernel<<<grid, block>>>(da, db, dr, n);
+    cudaDeviceSynchronize();
     timestamp(&t1);
 
     cudaMemcpy(r, dr, bytes, cudaMemcpyDeviceToHost);
@@ -127,9 +128,9 @@ int main(int argc, char **argv) {
     }
 
     const size_t bytes = (size_t)n * sizeof(float);
-    float *a = malloc(bytes);
-    float *b = malloc(bytes);
-    float *r = malloc(bytes);
+    float *a = (float *)malloc(bytes);
+    float *b = (float *)malloc(bytes);
+    float *r = (float *)malloc(bytes);
     if (!a || !b || !r) {
         fprintf(stderr, "error: allocation failed\n");
         return EXIT_FAILURE;

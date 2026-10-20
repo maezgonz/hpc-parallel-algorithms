@@ -169,6 +169,26 @@ Measured on FT3 (job 10691477, `slurm/scaling_sweep.sh`). Perfectly linear to 16
 
 Measured on FT3 (job 10717900, `slurm/weak_sweep.sh`). Runtime is flat while the problem stays on one socket (up to 16 threads); crossing into the second socket at 32/64 threads degrades efficiency — same hardware boundary visible in the strong-scaling curve.
 
+### CUDA — vector addition on A100 (MSc Module 3)
+
+The simplest CUDA kernel: element-wise vector addition, benchmarked at 3 sizes on the A100. The result is the **canonical GPU lesson** — the GPU is slower than the CPU for trivially memory-bound kernels because PCIe transfer dominates:
+
+| n | CPU (s) | GPU compute (s) | GPU total (s) | Transfer overhead | GPU speedup |
+|---:|---:|---:|---:|---:|---:|
+| 1M | 0.0006 | 0.00003 | 0.246 | 99.99% | **0.00×** |
+| 16M | 0.012 | 0.0003 | 0.263 | 99.90% | **0.05×** |
+| 128M | 0.098 | 0.0020 | 0.409 | 99.51% | **0.24×** |
+
+**Why the GPU "loses"** on a memory-bound kernel:
+
+- The kernel itself is fast (2.0 ms for 128M floats — ~200 GFLOPS, ~50% of A100's HBM2e bandwidth roof)
+- But the **PCIe transfer** (host→device + device→host) costs 407 ms — 200× the kernel time
+- A100 HBM2e: 1,555 GB/s. PCIe Gen4 x16: ~32 GB/s. For one add per element, the compute-to-data ratio is too low to amortize the transfer
+
+**When the GPU wins**: high compute-to-data ratio (many FLOPs per byte transferred). The LSTM benchmark (135s on cuDNN vs 310s on CPU) is exactly that case — 4,783 training steps amortize the transfer.
+
+> Measured on FT3 job 10890150, NVIDIA A100-PCIE-40GB, compute capability 8.0, 108 SMs, 1.41 GHz. Reproducible via `slurm/cuda_vector_add.slurm`.
+
 ![Weak scaling — Monte Carlo pi](benchmarks/weak_scaling_ft3.png)
 ### MPI ping-pong — inter-node latency and bandwidth (InfiniBand, 2 nodes)
 
