@@ -44,7 +44,8 @@ hpc-parallel-algorithms/
 │   ├── jacobi_2d.c           # hybrid MPI+OpenMP 2D Laplace solver, halo exchange
 │   ├── gbm_engine.c          # OpenMP GBM engine: antithetic variates, Welford, bands CSV
 │   ├── mpi_pingpong.c        # point-to-point latency/bandwidth benchmark
-│   └── mpi_collectives.c     # collective benchmark: Bcast/Scatter/Gather/Reduce/Allreduce
+│   ├── mpi_collectives.c     # collective benchmark: Bcast/Scatter/Gather/Reduce/Allreduce
+│   └── vector_add_cuda.cu   # CUDA kernel: CPU vs GPU vector addition with timing breakdown
 ├── slurm/
 │   ├── monte_carlo_pi.slurm  # SBATCH: 1 node, 64 CPUs, 10 min
 │   ├── jacobi_2d.slurm       # SBATCH: 2 nodes, 2x2 ranks, 32 CPUs each
@@ -250,6 +251,9 @@ python benchmarks/plot_field.py --csv benchmarks/jacobi_field_ft3.csv \
 - [x] Real FinisTerrae-3 runs populating the benchmark tables
 - [x] Collective communication benchmarks (Bcast/Scatter/Reduce at scale)
 - [x] Weak-scaling study (FT3, job 10717900)
+- [x] CUDA kernel: vector addition on A100 (MSc Module 3)
+- [ ] CUDA Monte Carlo kernel (port the GBM engine to A100)
+- [ ] NUMA-aware memory placement study
 
 ## License
 
