@@ -155,6 +155,38 @@ Measured on FT3 (job 10691477, `slurm/scaling_sweep.sh`). Perfectly linear to 16
 
 
 
+### CUDA Monte Carlo — GBM engine on A100 (MSc Module 3)
+
+The same financial kernel as `gbm_engine.c`, ported to CUDA with per-thread RNG and two-pass reduction. The result is a **nuanced hardware lesson**:
+
+| Engine | Hardware | Precision | Paths/s | Steps/s |
+|---|---|---|---:|---:|
+| C + OpenMP | FT3, 64 cores | double | **2.66M** | **671M** |
+| CUDA | A100 GPU, block=1024 | double | 2.43M | 612M |
+
+**The CPU wins by 9%** for this specific kernel. Why:
+
+- Box-Muller (`sqrt`, `log`, `cos`, `exp` per step) is transcendental-heavy
+- A100 FP64 peak: 9.7 TFLOPS. FP32 peak: 19.5 TFLOPS. Using `double` wastes half the GPU
+- The 64-core Ice Lake CPU has better aggregate DP instruction throughput for this mix
+
+**Block size matters** (100M paths):
+
+| Block | Kernel (s) | M paths/s |
+|---:|---:|---:|
+| 128 | 80.4 | 1.24 |
+| 256 | 51.0 | 1.96 |
+| **512** | **41.5** | **2.41** |
+| **1024** | **41.2** | **2.43** |
+
+Block=512-1024 saturates the 108 SMs (A100: 108 SMs × 1024 threads/block = 4608 threads/SM). Below 256, SMs are underutilized.
+
+**Statistical accuracy** (100M+ paths): mean and std match the closed-form to 4+ significant digits across all runs. Transfer overhead: 0.16% (only 2 scalars returned).
+
+**How to make the GPU win**: use `float` instead of `double` (2× FP32 throughput), or CUDA intrinsics (`__expf`, `__logf`, `__cosf` — faster but less precise), or multiple GPUs. Those are the natural next levers.
+
+> Measured on FT3 job 10890891, NVIDIA A100-PCIE-40GB. Reproducible via `slurm/gbm_cuda.slurm`.
+
 ### Weak scaling — Monte Carlo pi (25M samples/thread, FinisTerrae-3)
 
 | Threads | Total samples | Wall time (s) | Weak efficiency |
@@ -272,7 +304,8 @@ python benchmarks/plot_field.py --csv benchmarks/jacobi_field_ft3.csv \
 - [x] Collective communication benchmarks (Bcast/Scatter/Reduce at scale)
 - [x] Weak-scaling study (FT3, job 10717900)
 - [x] CUDA kernel: vector addition on A100 (MSc Module 3)
-- [ ] CUDA Monte Carlo kernel (port the GBM engine to A100)
+- [x] CUDA Monte Carlo GBM engine on A100 (CPU vs GPU comparison, block-size sweep)
+- [ ] FP32 CUDA GBM kernel (explore 2× FP32 throughput)
 - [ ] NUMA-aware memory placement study
 
 ## License

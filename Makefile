@@ -5,7 +5,7 @@ LDFLAGS := -fopenmp -lm
 
 .PHONY: all run-mcpi run-jacobi run-gbm run-pingpong clean
 
-all: bin/monte_carlo_pi bin/jacobi_2d bin/gbm_engine bin/mpi_pingpong bin/mpi_collectives bin/vector_add_cuda
+all: bin/monte_carlo_pi bin/jacobi_2d bin/gbm_engine bin/mpi_pingpong bin/mpi_collectives bin/vector_add_cuda bin/gbm_cuda
 
 bin/monte_carlo_pi: src/monte_carlo_pi.c
 	@mkdir -p $(dir $@)
@@ -31,6 +31,10 @@ NVCC ?= nvcc
 NVCFLAGS := -O3 -std=c++17
 
 bin/vector_add_cuda: src/vector_add_cuda.cu
+	@mkdir -p $(dir $@)
+	$(NVCC) $(NVCFLAGS) -o $@ $<
+
+bin/gbm_cuda: src/gbm_cuda.cu
 	@mkdir -p $(dir $@)
 	$(NVCC) $(NVCFLAGS) -o $@ $<
 
