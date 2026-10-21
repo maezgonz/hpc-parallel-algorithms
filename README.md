@@ -157,20 +157,25 @@ Measured on FT3 (job 10691477, `slurm/scaling_sweep.sh`). Perfectly linear to 16
 
 ### CUDA Monte Carlo — GBM engine on A100 (MSc Module 3)
 
-The same financial kernel as `gbm_engine.c`, ported to CUDA with per-thread RNG and two-pass reduction. The result is a **nuanced hardware lesson**:
+The same financial kernel as `gbm_engine.c`, ported to CUDA in both double and single precision. The FP64 result is a nuanced hardware lesson; the FP32 result is the resolution:
 
-| Engine | Hardware | Precision | Paths/s | Steps/s |
-|---|---|---|---:|---:|
-| C + OpenMP | FT3, 64 cores | double | **2.66M** | **671M** |
-| CUDA | A100 GPU, block=1024 | double | 2.43M | 612M |
+| Engine | Hardware | Precision | Paths/s | Steps/s | Kernel (100M) |
+|---|---|---|---:|---:|---:|
+| C + OpenMP | FT3, 64 cores | double | 2.66M | 671M | 376s |
+| CUDA | A100, block=1024 | double | 2.43M | 612M | 51.0s |
+| **CUDA** | **A100, block=1024** | **float (fast math)** | **11.61M** | **2,925M** | **8.6s** |
 
-**The CPU wins by 9%** for this specific kernel. Why:
+**FP32 wins by 4.4× over the CPU and 4.8× over FP64 on the same GPU.**
 
-- Box-Muller (`sqrt`, `log`, `cos`, `exp` per step) is transcendental-heavy
-- A100 FP64 peak: 9.7 TFLOPS. FP32 peak: 19.5 TFLOPS. Using `double` wastes half the GPU
-- The 64-core Ice Lake CPU has better aggregate DP instruction throughput for this mix
+Why the jump from 2.43M to 11.61M (4.8×):
+- A100 FP32/FP64 peak ratio: 2.0× (19.5 vs 9.7 TFLOPS)
+- CUDA intrinsics (`__logf`, `__cosf`, `__expf`): hardware approximation units, not software libraries
+- `--use_fast_math` compilation: enables the intrinsics + flushes denormals
+- 24-bit uniform conversion: fewer bits per RNG draw
 
-**Block size matters** (100M paths):
+**Accuracy check** (100M paths): FP32 mean and std match the closed-form to 4 significant digits — sufficient for pricing (the error is dominated by Monte Carlo sampling, not float precision).
+
+**Block size matters** (FP64, 100M paths):
 
 | Block | Kernel (s) | M paths/s |
 |---:|---:|---:|
@@ -179,13 +184,9 @@ The same financial kernel as `gbm_engine.c`, ported to CUDA with per-thread RNG 
 | **512** | **41.5** | **2.41** |
 | **1024** | **41.2** | **2.43** |
 
-Block=512-1024 saturates the 108 SMs (A100: 108 SMs × 1024 threads/block = 4608 threads/SM). Below 256, SMs are underutilized.
+**Transfer overhead**: 0.16% (only 2 scalars returned). The kernel is compute-bound — Box-Muller with transcendentals dominates.
 
-**Statistical accuracy** (100M+ paths): mean and std match the closed-form to 4+ significant digits across all runs. Transfer overhead: 0.16% (only 2 scalars returned).
-
-**How to make the GPU win**: use `float` instead of `double` (2× FP32 throughput), or CUDA intrinsics (`__expf`, `__logf`, `__cosf` — faster but less precise), or multiple GPUs. Those are the natural next levers.
-
-> Measured on FT3 job 10890891, NVIDIA A100-PCIE-40GB. Reproducible via `slurm/gbm_cuda.slurm`.
+> Measured on FT3 jobs 10890891 (FP64) and 10903731 (FP32), NVIDIA A100-PCIE-40GB. Reproducible via `slurm/gbm_cuda.slurm` and `slurm/gbm_cuda_fp32.slurm`.
 
 ### Weak scaling — Monte Carlo pi (25M samples/thread, FinisTerrae-3)
 
@@ -304,8 +305,7 @@ python benchmarks/plot_field.py --csv benchmarks/jacobi_field_ft3.csv \
 - [x] Collective communication benchmarks (Bcast/Scatter/Reduce at scale)
 - [x] Weak-scaling study (FT3, job 10717900)
 - [x] CUDA kernel: vector addition on A100 (MSc Module 3)
-- [x] CUDA Monte Carlo GBM engine on A100 (CPU vs GPU comparison, block-size sweep)
-- [ ] FP32 CUDA GBM kernel (explore 2× FP32 throughput)
+- [x] CUDA Monte Carlo GBM engine on A100 — FP64 and FP32 (fast math), 11.61M paths/s
 - [ ] NUMA-aware memory placement study
 
 ## License

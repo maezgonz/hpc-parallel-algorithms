@@ -5,7 +5,7 @@ LDFLAGS := -fopenmp -lm
 
 .PHONY: all run-mcpi run-jacobi run-gbm run-pingpong clean
 
-all: bin/monte_carlo_pi bin/jacobi_2d bin/gbm_engine bin/mpi_pingpong bin/mpi_collectives bin/vector_add_cuda bin/gbm_cuda
+all: bin/monte_carlo_pi bin/jacobi_2d bin/gbm_engine bin/mpi_pingpong bin/mpi_collectives bin/vector_add_cuda bin/gbm_cuda bin/gbm_cuda_fp32
 
 bin/monte_carlo_pi: src/monte_carlo_pi.c
 	@mkdir -p $(dir $@)
@@ -37,6 +37,10 @@ bin/vector_add_cuda: src/vector_add_cuda.cu
 bin/gbm_cuda: src/gbm_cuda.cu
 	@mkdir -p $(dir $@)
 	$(NVCC) $(NVCFLAGS) -o $@ $<
+
+bin/gbm_cuda_fp32: src/gbm_cuda_fp32.cu
+	@mkdir -p $(dir $@)
+	$(NVCC) -O3 --use_fast_math -o $@ $<
 
 run-mcpi: bin/monte_carlo_pi
 	./bin/monte_carlo_pi 100000000
