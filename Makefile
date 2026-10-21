@@ -3,9 +3,18 @@ MPICC   ?= mpicc
 CFLAGS  := -O3 -march=native -fopenmp -Wall -Wextra -std=c17
 LDFLAGS := -fopenmp -lm
 
+# CUDA targets build only where nvcc exists (FT3 nodes, not CI runners)
+NVCC := $(shell which nvcc 2>/dev/null)
+NVCFLAGS := -O3 -std=c++17
+
 .PHONY: all run-mcpi run-jacobi run-gbm run-pingpong clean
 
-all: bin/monte_carlo_pi bin/jacobi_2d bin/gbm_engine bin/mpi_pingpong bin/mpi_collectives bin/vector_add_cuda bin/gbm_cuda bin/gbm_cuda_fp32
+CUDA_BINS :=
+ifneq ($(NVCC),)
+CUDA_BINS := bin/vector_add_cuda bin/gbm_cuda bin/gbm_cuda_fp32
+endif
+
+all: bin/monte_carlo_pi bin/jacobi_2d bin/gbm_engine bin/mpi_pingpong bin/mpi_collectives $(CUDA_BINS)
 
 bin/monte_carlo_pi: src/monte_carlo_pi.c
 	@mkdir -p $(dir $@)
@@ -26,9 +35,6 @@ bin/mpi_pingpong: src/mpi_pingpong.c
 bin/mpi_collectives: src/mpi_collectives.c
 	@mkdir -p $(dir $@)
 	$(MPICC) $(CFLAGS) -o $@ $< -lm
-
-NVCC ?= nvcc
-NVCFLAGS := -O3 -std=c++17
 
 bin/vector_add_cuda: src/vector_add_cuda.cu
 	@mkdir -p $(dir $@)
